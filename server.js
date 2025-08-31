@@ -104,9 +104,9 @@ async function run(prompt, history) {
     });
 
     const result = await chatsession.sendMessage(prompt);
-
     const doorWords = await result.response.text(); 
 
+    // manual dumb down response type detection unlike self-ai
     let doorState;
     if (
         doorWords.toLowerCase().includes("open") ||
