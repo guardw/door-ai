@@ -17,23 +17,20 @@ globalThis.Response = fetch.Response;
 
 const app = express();
 
-// Parse JSON request bodies
+// parse them shit gng
 app.use(bodyParser.json());
 
-// Import Google Generative AI library
+// google ai lib
 const {
   GoogleGenerativeAI,
   HarmCategory,
   HarmBlockThreshold,
 } = require("@google/generative-ai");
 
-// Replace with your actual API key
+// access key via env WAIT THSI SHIT IS PUBLIC
 const apikey = process.env.API_KEY;
 
-// Create a new Google Generative AI instance
 const genai = new GoogleGenerativeAI(apikey);
-
-// Generation configuration (example)
 const generationconfig = {
   temperature: 0.95,
   top_p: 0.95,
@@ -108,7 +105,7 @@ async function run(prompt, history) {
 
     const result = await chatsession.sendMessage(prompt);
 
-    const doorWords = await result.response.text(); // Ensure you await the text() function
+    const doorWords = await result.response.text(); 
 
     let doorState;
     if (
@@ -127,7 +124,7 @@ async function run(prompt, history) {
     ) {
       doorState = "angry";
     } else {
-      doorState = "close"; // Default to close if nothing specific is mentioned
+      doorState = "close"; 
     }
 
     const context = ` `;
