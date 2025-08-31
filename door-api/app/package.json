@@ -1,7 +1,7 @@
 {
   "name": "self-node",
   "version": "0.1.0",
-  "description": "A simple Node app built on fastify, instantly up and running. Built to be remixed on Glitch.com.",
+  "description": "goon.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -15,10 +15,10 @@
     "@google/generative-ai": "^0.21.0"
   },
   "engines": {
-    "node": "14.x"
+    "node": "24.7.0"
   },
   "repository": {
-    "url": "https://glitch.com/edit/#!/door-node"
+    "url": ""
   },
   "license": "MIT",
   "keywords": [
