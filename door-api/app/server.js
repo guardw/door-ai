@@ -9,7 +9,6 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// Global fetch and response objects
 globalThis.fetch = fetch;
 globalThis.Headers = fetch.Headers;
 globalThis.Request = fetch.Request;
@@ -17,23 +16,18 @@ globalThis.Response = fetch.Response;
 
 const app = express();
 
-// Parse JSON request bodies
 app.use(bodyParser.json());
 
-// Import Google Generative AI library
 const {
   GoogleGenerativeAI,
   HarmCategory,
   HarmBlockThreshold,
 } = require("@google/generative-ai");
 
-// Replace with your actual API key
 const apikey = process.env.API_KEY;
 
-// Create a new Google Generative AI instance
 const genai = new GoogleGenerativeAI(apikey);
 
-// Generation configuration (example)
 const generationconfig = {
   temperature: 0.95,
   top_p: 0.95,
@@ -108,9 +102,9 @@ async function run(prompt, history) {
 
     const result = await chatsession.sendMessage(prompt);
 
-    const doorWords = await result.response.text(); // Ensure you await the text() function
+    const doorWords = await result.response.text();
 
-    let doorState;
+    let doorState; // dumb aah state reading method 
     if (
         doorWords.toLowerCase().includes("open") ||
         doorWords.toLowerCase().includes("grant access") ||
@@ -127,7 +121,7 @@ async function run(prompt, history) {
     ) {
       doorState = "angry";
     } else {
-      doorState = "close"; // Default to close if nothing specific is mentioned
+      doorState = "close";
     }
 
     const context = ` `;
