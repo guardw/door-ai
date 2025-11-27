@@ -38,7 +38,7 @@ const generationconfig = {
 async function run(prompt, history) {
   try {
     const model = await genai.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash", 
       safe: {
         HARM_CATEGORY_HARASSMENT: "BLOCK_NONE",
         HARM_CATEGORY_HATE_SPEECH: "BLOCK_NONE",
