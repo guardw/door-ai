@@ -76,7 +76,7 @@ async function sendMessageWithRetry(chatSession, prompt, maxRetries = 3) {
 async function run(prompt, history) {
   try {
     const model = genai.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       safetySettings,
       systemInstruction: ` 
            
