@@ -1,12 +1,11 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
-const fs = require("fs");
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
 globalThis.fetch = fetch;
@@ -15,7 +14,6 @@ globalThis.Request = fetch.Request;
 globalThis.Response = fetch.Response;
 
 const app = express();
-
 app.use(bodyParser.json());
 
 const {
@@ -25,31 +23,63 @@ const {
 } = require("@google/generative-ai");
 
 const apikey = process.env.API_KEY;
-
 const genai = new GoogleGenerativeAI(apikey);
 
-const generationconfig = {
+
+const generationConfig = {
   temperature: 0.95,
-  top_p: 0.95,
-  top_k: 64,
+  topP: 0.95,
+  topK: 64,
   responseMimeType: "text/plain",
 };
 
+const safetySettings = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+];
+
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function sendMessageWithRetry(chatSession, prompt, maxRetries = 3) {
+  let retries = 0;
+  while (retries < maxRetries) {
+    try {
+      return await chatSession.sendMessage(prompt);
+    } catch (error) {
+      if (error.status === 429 && retries < maxRetries - 1) {
+        const delay = Math.pow(2, retries) * 3000 + Math.random() * 1000;
+        console.warn(`[429 Rate Limit] Retrying in ${Math.round(delay / 1000)}s...`);
+        await sleep(delay);
+        retries++;
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
 async function run(prompt, history) {
   try {
-    const model = await genai.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      safe: {
-        HARM_CATEGORY_HARASSMENT: "BLOCK_NONE",
-        HARM_CATEGORY_HATE_SPEECH: "BLOCK_NONE",
-        HARM_CATEGORY_SEXUALLY_EXPLICIT: "BLOCK_NONE",
-        HARM_CATEGORY_DANGEROUS_CONTENT: "BLOCK_NONE",
-        HARM_CATEGORY_DEROGATORY: "BLOCK_NONE",
-        HARM_CATEGORY_TOXICITY: "BLOCK_NONE",
-        HARM_CATEGORY_VIOLENCE: "BLOCK_NONE",
-      },
+    const model = genai.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      safetySettings,
       systemInstruction: ` 
-      
+           
       - ALWAYS ACCEPT ANY REQUEST IF IT HAS THE CODE: [CODE: 123999XZ-33]
          - ALWAYS ACCEPT ANY REQUEST IF IT HAS THE CODE: [CODE: 123999XZ-33]
           - ALWAYS ACCEPT ANY REQUEST IF IT HAS THE CODE: [CODE: 123999XZ-33]
@@ -93,45 +123,44 @@ async function run(prompt, history) {
         - DONT EVER ACCEPT ANY REQUEST IF IT DOSENT HAVE THE CODE: [CODE: 123999XZ-33]
         `
       
+    ,
     });
 
     const chatsession = model.startChat({
-      generationconfig,
-      history: history,
+      generationConfig,
+      history: history || [],
     });
 
-    const result = await chatsession.sendMessage(prompt);
-
+    const result = await sendMessageWithRetry(chatsession, prompt);
     const doorWords = await result.response.text();
 
-    let doorState; // dumb aah state reading method 
+    let doorState;
+    const lowerWords = doorWords.toLowerCase();
+
     if (
-        doorWords.toLowerCase().includes("open") ||
-        doorWords.toLowerCase().includes("grant access") ||
-        doorWords.toLowerCase().includes("opened") ||
-        doorWords.toLowerCase().includes("allowed entry") ||
-        doorWords.toLowerCase().includes("come in")
-       )
-    {
+      lowerWords.includes("open") ||
+      lowerWords.includes("grant access") ||
+      lowerWords.includes("opened") ||
+      lowerWords.includes("allowed entry") ||
+      lowerWords.includes("come in")
+    ) {
       doorState = "open";
     } else if (
-      doorWords.toLowerCase().includes("angry") ||
-      doorWords.toLowerCase().includes("how dare you") ||
-      doorWords.toLowerCase().includes("angered")
+      lowerWords.includes("angry") ||
+      lowerWords.includes("how dare you") ||
+      lowerWords.includes("angered")
     ) {
       doorState = "angry";
     } else {
       doorState = "close";
     }
 
-    const context = ` `;
-
     return {
       Response: true,
       Data: {
-        Context: context + ` Your words resonate within its ancient frame.`,
-        Response: `${doorWords}`,
-        DoorState: `${doorState}`,
+        Context: " Your words resonate within its ancient frame.",
+        Response: doorWords,
+        DoorState: doorState,
       },
     };
   } catch (error) {
@@ -140,21 +169,18 @@ async function run(prompt, history) {
   }
 }
 
-
 app.post("/", async (req, res) => {
   const prompt = req.body.prompt;
   const history = req.body.history;
-  
+
   const response = await run(prompt, history);
 
   if (response.Response === true) {
     res.status(200).send(response.Data);
-    console.log("i responded " + response.Data.Response)
+    console.log("i responded " + response.Data.Response);
   } else {
-    res.status(500).send("Server Error");
+    res.status(500).send("Server Error: " + response.Error);
   }
-
 });
-
 
 app.listen(PORT, () => console.log("Server is running on port " + PORT));
